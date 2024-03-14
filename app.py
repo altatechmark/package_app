@@ -142,7 +142,7 @@ def update_user_package_by_id(user_id):
     new_package_id = data.get('package_id')
 
     # Convert user_id from string to ObjectId for MongoDB
-    from bson import ObjectId
+    
     if not ObjectId.is_valid(user_id):  # Validates whether the user_id is a valid ObjectId
         return jsonify({'message': 'Invalid user_id format'}), 400
 
