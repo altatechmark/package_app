@@ -8,7 +8,11 @@ app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb+srv://shamoilkazmi:WrOupdeZVa2ElJVq@cluster0.j6b7l7r.mongodb.net/user"
 mongo = PyMongo(app)
 
-# Endpoint to sign up a new user
+
+@app.route('/')
+def hello():
+    return 'Hello, World!'
+
 # Endpoint to sign up a new user
 @app.route('/signup', methods=['POST'])
 def signup():
