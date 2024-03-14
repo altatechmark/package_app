@@ -2,12 +2,13 @@ from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.json_util import dumps
+from bson.errors import InvalidId
+from bson import ObjectId
 
 app = Flask(__name__)
 # Replace 'your_mongodb_uri' with your actual MongoDB URI
 app.config["MONGO_URI"] = "mongodb+srv://shamoilkazmi:WrOupdeZVa2ElJVq@cluster0.j6b7l7r.mongodb.net/user"
 mongo = PyMongo(app)
-
 
 @app.route('/')
 def hello():
@@ -46,7 +47,8 @@ def login():
     user = users.find_one({"username": data.get('username')})
 
     if user and check_password_hash(user['password_hash'], data.get('password')):
-        return jsonify({'message': 'Login successful'}), 200
+        user_id = str(user['_id'])  # Convert ObjectId to string
+        return jsonify({'message': 'Login successful', 'user_id': user_id}), 200
     else:
         return jsonify({'message': 'Invalid username or password'}), 401
 
@@ -142,7 +144,6 @@ def update_user_package_by_id(user_id):
     new_package_id = data.get('package_id')
 
     # Convert user_id from string to ObjectId for MongoDB
-    
     if not ObjectId.is_valid(user_id):  # Validates whether the user_id is a valid ObjectId
         return jsonify({'message': 'Invalid user_id format'}), 400
 
@@ -158,18 +159,27 @@ def update_user_package_by_id(user_id):
 
 
     
-# Route to get user's package_id by username
-@app.route('/users/package/<username>', methods=['GET'])
-def get_user_package_id(username):
+# Route to get user's package_id by user_id
+@app.route('/users/package/id/<user_id>', methods=['GET'])
+def get_user_package_by_id(user_id):
     users = mongo.db.users
-    user = users.find_one({"username": username})
-    
+    # Ensure user_id is a valid ObjectId
+    try:
+        # Convert user_id from string to ObjectId for MongoDB
+        oid = ObjectId(user_id)
+    except InvalidId:
+        # If user_id is not a valid ObjectId, return an error
+        return jsonify({'message': 'Invalid user_id format'}), 400
+
+    user = users.find_one({"_id": oid})
+
     if user:
         # Check if 'package_id' exists for the user, if not, return a default message or value
         package_id = user.get('package_id', 'No package assigned')
-        return jsonify({'username': username, 'package_id': package_id}), 200
+        return jsonify({'user_id': user_id, 'package_id': package_id}), 200
     else:
         return jsonify({'message': 'User not found'}), 404
+
 
 # Route to delete all users
 @app.route('/users', methods=['DELETE'])
@@ -181,5 +191,18 @@ def delete_all_users():
         return jsonify({'message': 'No users found to delete'}), 404
 
 
+# Route to get the motion status by package_id
+@app.route('/packages/motion_status/<package_id>', methods=['GET'])
+def get_motion_status(package_id):
+    packages = mongo.db.packages
+    package = packages.find_one({"package_id": package_id})
+
+    if package:
+        # Check if 'motion_status' exists for the package, if not, return a default message or value
+        motion_status = package.get('motion_status', 'No motion status recorded')
+        return jsonify({'package_id': package_id, 'motion_status': motion_status}), 200
+    else:
+        return jsonify({'message': 'Package not found'}), 404
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0')
